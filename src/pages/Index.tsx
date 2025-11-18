@@ -15,7 +15,6 @@ import { Sparkles, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Header } from '@/components/Header';
 
 type ProcessingStage = 'upload' | 'refining' | 'processing' | 'complete';
 type ProcessingMode = 'single' | 'batch';
