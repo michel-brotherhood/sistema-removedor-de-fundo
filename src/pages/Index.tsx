@@ -208,7 +208,7 @@ const Index = () => {
         <header className="text-center mb-8 sm:mb-12 space-y-4">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-accent/50 text-accent-foreground border border-primary/20">
             <Sparkles className="w-4 h-4" />
-            <span className="text-xs sm:text-sm font-medium">Powered by AI</span>
+            <span className="text-xs sm:text-sm font-medium">By Michel Brotherhood</span>
           </div>
           
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent px-4">
@@ -368,9 +368,14 @@ const Index = () => {
               onClear={clearHistory}
             />
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Processamento 100% no navegador • Suas imagens permanecem privadas
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Processamento 100% no navegador • Suas imagens permanecem privadas
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Desenvolvido por Michel
+            </p>
+          </div>
         </footer>
       </div>
       
