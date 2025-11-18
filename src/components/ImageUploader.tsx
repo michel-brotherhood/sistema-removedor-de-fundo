@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 interface ImageUploaderProps {
-  onImageSelect: (file: File) => void;
+  onImageSelect: (files: File[]) => void;
+  multiple?: boolean;
 }
 
-export const ImageUploader = ({ onImageSelect }: ImageUploaderProps) => {
+export const ImageUploader = ({ onImageSelect, multiple = false }: ImageUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
@@ -25,22 +26,23 @@ export const ImageUploader = ({ onImageSelect }: ImageUploaderProps) => {
     e.preventDefault();
     setIsDragging(false);
 
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      onImageSelect(file);
+    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+    
+    if (files.length > 0) {
+      onImageSelect(multiple ? files : [files[0]]);
     } else {
       toast({
         title: "Formato inválido",
-        description: "Por favor, selecione uma imagem válida.",
+        description: "Por favor, selecione imagens válidas.",
         variant: "destructive",
       });
     }
-  }, [onImageSelect, toast]);
+  }, [onImageSelect, toast, multiple]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onImageSelect(file);
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) {
+      onImageSelect(files);
     }
   }, [onImageSelect]);
 
@@ -64,6 +66,7 @@ export const ImageUploader = ({ onImageSelect }: ImageUploaderProps) => {
       <input
         type="file"
         accept="image/*"
+        multiple={multiple}
         onChange={handleFileSelect}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
       />
@@ -74,12 +77,17 @@ export const ImageUploader = ({ onImageSelect }: ImageUploaderProps) => {
         </div>
         
         <div className="text-center space-y-2">
-          <h3 className="text-2xl font-semibold text-foreground">
-            Arraste sua imagem aqui
+          <h3 className="text-xl sm:text-2xl font-semibold text-foreground">
+            Arraste {multiple ? 'suas imagens' : 'sua imagem'} aqui
           </h3>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground px-4">
             ou clique para selecionar do seu computador
           </p>
+          {multiple && (
+            <p className="text-xs text-muted-foreground">
+              Você pode selecionar múltiplas imagens
+            </p>
+          )}
         </div>
 
         <div className="flex gap-2 text-xs text-muted-foreground">
