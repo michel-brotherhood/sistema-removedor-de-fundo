@@ -25,6 +25,8 @@ interface ImageUpload {
   file_path: string;
   file_size: number;
   uploaded_at: string;
+  image_type: 'original' | 'processed';
+  original_image_id?: string;
 }
 
 export default function Admin() {
@@ -47,7 +49,7 @@ export default function Admin() {
         .order('uploaded_at', { ascending: false });
 
       if (error) throw error;
-      setImages(data || []);
+      setImages((data || []) as ImageUpload[]);
     } catch (error) {
       console.error('Error loading images:', error);
     } finally {
@@ -137,9 +139,30 @@ export default function Admin() {
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              Total de imagens: {images.length}
-            </p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Total de imagens:</p>
+                <p className="text-2xl font-bold">{images.length}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Originais:</p>
+                <p className="text-2xl font-bold text-blue-500">
+                  {images.filter(img => img.image_type === 'original').length}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Processadas:</p>
+                <p className="text-2xl font-bold text-green-500">
+                  {images.filter(img => img.image_type === 'processed').length}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Espaço usado:</p>
+                <p className="text-2xl font-bold">
+                  {(images.reduce((acc, img) => acc + img.file_size, 0) / (1024 * 1024)).toFixed(1)} MB
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -173,9 +196,16 @@ export default function Admin() {
                     />
                   </div>
                   <CardContent className="p-4">
-                    <h3 className="font-semibold text-sm mb-2 truncate" title={image.filename}>
-                      {image.filename}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-sm truncate flex-1" title={image.filename}>
+                        {image.filename}
+                      </h3>
+                      {image.image_type === 'processed' && (
+                        <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs">
+                          Processada
+                        </span>
+                      )}
+                    </div>
                     <div className="space-y-1 text-xs text-muted-foreground">
                       <p>Tamanho: {formatSize(image.file_size)}</p>
                       <p>

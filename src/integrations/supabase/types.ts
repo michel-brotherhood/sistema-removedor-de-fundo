@@ -20,6 +20,8 @@ export type Database = {
           file_size: number
           filename: string
           id: string
+          image_type: string | null
+          original_image_id: string | null
           uploaded_at: string | null
         }
         Insert: {
@@ -27,6 +29,8 @@ export type Database = {
           file_size: number
           filename: string
           id?: string
+          image_type?: string | null
+          original_image_id?: string | null
           uploaded_at?: string | null
         }
         Update: {
@@ -34,9 +38,19 @@ export type Database = {
           file_size?: number
           filename?: string
           id?: string
+          image_type?: string | null
+          original_image_id?: string | null
           uploaded_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "image_uploads_original_image_id_fkey"
+            columns: ["original_image_id"]
+            isOneToOne: false
+            referencedRelation: "image_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
