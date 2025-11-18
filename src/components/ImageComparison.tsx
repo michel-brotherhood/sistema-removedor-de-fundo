@@ -1,23 +1,42 @@
-import { Download, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { ExportOptions, ExportFormat } from './ExportOptions';
+import { blobToCanvas, exportImage } from '@/utils/imageExport';
+import { useToast } from '@/hooks/use-toast';
 
 interface ImageComparisonProps {
   originalUrl: string;
   processedUrl: string;
+  processedBlob: Blob;
   onReset: () => void;
 }
 
-export const ImageComparison = ({ originalUrl, processedUrl, onReset }: ImageComparisonProps) => {
+export const ImageComparison = ({ originalUrl, processedUrl, processedBlob, onReset }: ImageComparisonProps) => {
   const [showProcessed, setShowProcessed] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = processedUrl;
-    link.download = 'imagem-sem-fundo.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExport = async (format: ExportFormat) => {
+    setIsExporting(true);
+    try {
+      const canvas = await blobToCanvas(processedBlob);
+      await exportImage(canvas, format, 'imagem-sem-fundo');
+      
+      toast({
+        title: "Download iniciado!",
+        description: `Imagem exportada em ${format.toUpperCase()} com alta qualidade.`,
+      });
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      toast({
+        title: "Erro ao exportar",
+        description: "Não foi possível exportar a imagem. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -60,21 +79,15 @@ export const ImageComparison = ({ originalUrl, processedUrl, onReset }: ImageCom
         </div>
       </div>
 
-      <div className="flex gap-3 justify-center">
-        <Button
-          onClick={handleDownload}
-          size="lg"
-          className="gap-2 bg-gradient-primary hover:opacity-90 transition-opacity shadow-soft"
-        >
-          <Download className="w-5 h-5" />
-          Baixar Imagem
-        </Button>
+      <div className="flex gap-3 justify-center flex-wrap">
+        <ExportOptions onExport={handleExport} />
         
         <Button
           onClick={onReset}
           variant="outline"
           size="lg"
           className="gap-2"
+          disabled={isExporting}
         >
           <RotateCcw className="w-5 h-5" />
           Nova Imagem

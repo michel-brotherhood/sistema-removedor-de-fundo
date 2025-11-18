@@ -30,7 +30,17 @@ function resizeImageIfNeeded(canvas: HTMLCanvasElement, ctx: CanvasRenderingCont
   return false;
 }
 
-export const removeBackground = async (imageElement: HTMLImageElement, onProgress?: (progress: number) => void): Promise<Blob> => {
+interface RemovalOptions {
+  sensitivity?: number;
+  edgeSmoothing?: number;
+  onProgress?: (progress: number) => void;
+}
+
+export const removeBackground = async (
+  imageElement: HTMLImageElement, 
+  options: RemovalOptions = {}
+): Promise<Blob> => {
+  const { sensitivity = 0.5, edgeSmoothing = 0.5, onProgress } = options;
   try {
     console.log('Iniciando processo de remoção de fundo...');
     onProgress?.(10);
@@ -112,11 +122,52 @@ export const removeBackground = async (imageElement: HTMLImageElement, onProgres
     outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.drawImage(canvas, 0, 0);
     
-    // Aplica a máscara
+    // Aplica a máscara com sensibilidade e suavização
     const finalImageData = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
+    
+    // Primeiro passo: aplica sensibilidade
     for (let i = 0; i < pixels.length; i += 4) {
-      const maskValue = resizedMask.data[i]; // Pega o valor da máscara
-      finalImageData.data[i + 3] = maskValue; // Define o canal alpha
+      let maskValue = resizedMask.data[i] / 255;
+      
+      // Ajusta sensibilidade (threshold adaptativo)
+      maskValue = maskValue > (1 - sensitivity) ? 1 : maskValue < sensitivity ? 0 : maskValue;
+      
+      finalImageData.data[i + 3] = maskValue * 255;
+    }
+    
+    // Segundo passo: suavização de bordas (box blur no canal alpha)
+    if (edgeSmoothing > 0.1) {
+      const smoothRadius = Math.ceil(edgeSmoothing * 3);
+      const smoothedData = new Uint8ClampedArray(finalImageData.data);
+      
+      for (let y = 0; y < outputCanvas.height; y++) {
+        for (let x = 0; x < outputCanvas.width; x++) {
+          let sum = 0;
+          let count = 0;
+          
+          // Box blur no canal alpha
+          for (let dy = -smoothRadius; dy <= smoothRadius; dy++) {
+            for (let dx = -smoothRadius; dx <= smoothRadius; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              
+              if (nx >= 0 && nx < outputCanvas.width && ny >= 0 && ny < outputCanvas.height) {
+                const idx = (ny * outputCanvas.width + nx) * 4 + 3;
+                sum += finalImageData.data[idx];
+                count++;
+              }
+            }
+          }
+          
+          const idx = (y * outputCanvas.width + x) * 4 + 3;
+          smoothedData[idx] = sum / count;
+        }
+      }
+      
+      // Aplica os dados suavizados
+      for (let i = 3; i < finalImageData.data.length; i += 4) {
+        finalImageData.data[i] = smoothedData[i];
+      }
     }
     
     outputCtx.putImageData(finalImageData, 0, 0);
