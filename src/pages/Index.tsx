@@ -15,6 +15,7 @@ import { Sparkles, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Header } from '@/components/Header';
 
 type ProcessingStage = 'upload' | 'refining' | 'processing' | 'complete';
 type ProcessingMode = 'single' | 'batch';
@@ -211,11 +212,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-bg">
+      <Header />
       <div className="container mx-auto px-4 py-6 sm:py-12">
         <header className="text-center mb-8 sm:mb-12 space-y-4">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-accent/50 text-accent-foreground border border-primary/20">
             <Sparkles className="w-4 h-4" />
-            <span className="text-xs sm:text-sm font-medium">By Michel Brotherhood</span>
+            <span className="text-xs sm:text-sm font-medium">Powered by AI</span>
           </div>
           
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent px-4">
