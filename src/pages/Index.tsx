@@ -32,30 +32,36 @@ const Index = () => {
   const [edgeSmoothing, setEdgeSmoothing] = useState(0.5);
   const [batchImages, setBatchImages] = useState<ProcessedImage[]>([]);
   const [previewImage, setPreviewImage] = useState<ProcessedImage | null>(null);
+  const [originalImageId, setOriginalImageId] = useState<string | null>(null);
   const { toast } = useToast();
   const { history, addToHistory, removeFromHistory, clearHistory, downloadFromHistory } = useImageHistory();
-  const { uploadImage } = useImageUpload();
+  const { uploadImage, uploadProcessedImage } = useImageUpload();
 
   const handleImageSelect = async (files: File[]) => {
-    // Upload images to storage
-    for (const file of files) {
-      await uploadImage(file);
-    }
-
     if (mode === 'single') {
+      // Upload original image and store its ID
+      const result = await uploadImage(files[0]);
+      if (result.success && result.id) {
+        setOriginalImageId(result.id);
+      }
+      
       setCurrentFile(files[0]);
       const originalUrl = URL.createObjectURL(files[0]);
       setOriginalImageUrl(originalUrl);
       setStage('refining');
     } else {
-      // Modo batch
-      const newImages: ProcessedImage[] = files.map(file => ({
-        id: Math.random().toString(36),
-        originalFile: file,
-        originalUrl: URL.createObjectURL(file),
-        progress: 0,
-        status: 'pending' as const,
-      }));
+      // Modo batch - upload all original images
+      const newImages: ProcessedImage[] = [];
+      for (const file of files) {
+        const result = await uploadImage(file);
+        newImages.push({
+          id: result.id || Math.random().toString(36),
+          originalFile: file,
+          originalUrl: URL.createObjectURL(file),
+          progress: 0,
+          status: 'pending' as const,
+        });
+      }
       setBatchImages(prev => [...prev, ...newImages]);
       setStage('refining');
     }
@@ -81,7 +87,13 @@ const Index = () => {
         const processedUrl = URL.createObjectURL(blob);
         setProcessedImageUrl(processedUrl);
         
-        // Adiciona ao histórico
+        // Upload processed image to storage
+        if (originalImageId) {
+          const filename = currentFile.name.replace(/\.[^/.]+$/, '') + '-processed.png';
+          await uploadProcessedImage(blob, filename, originalImageId);
+        }
+        
+        // Adiciona ao histórico local
         const filename = currentFile.name.replace(/\.[^/.]+$/, '') || 'imagem';
         await addToHistory(blob, filename);
         
@@ -128,8 +140,11 @@ const Index = () => {
 
           const processedUrl = URL.createObjectURL(blob);
           
-          // Adiciona ao histórico
-          const filename = image.originalFile.name.replace(/\.[^/.]+$/, '') || 'imagem';
+          // Upload processed image to storage
+          const filename = image.originalFile.name.replace(/\.[^/.]+$/, '') + '-processed.png';
+          await uploadProcessedImage(blob, filename, image.id);
+          
+          // Adiciona ao histórico local
           await addToHistory(blob, filename);
           
           setBatchImages(prev =>
@@ -212,7 +227,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-bg">
-      <Header />
       <div className="container mx-auto px-4 py-6 sm:py-12">
         <header className="text-center mb-8 sm:mb-12 space-y-4">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-accent/50 text-accent-foreground border border-primary/20">

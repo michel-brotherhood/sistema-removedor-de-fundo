@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 export const useImageUpload = () => {
   const { toast } = useToast();
 
-  const uploadImage = async (file: File) => {
+  const uploadImage = async (file: File, imageType: 'original' | 'processed' = 'original', originalImageId?: string) => {
     try {
       // Generate unique filename
       const fileExt = file.name.split('.').pop();
@@ -19,17 +19,21 @@ export const useImageUpload = () => {
       if (uploadError) throw uploadError;
 
       // Save metadata to database
-      const { error: dbError } = await supabase
+      const { data, error: dbError } = await supabase
         .from('image_uploads')
         .insert({
           filename: file.name,
           file_path: filePath,
           file_size: file.size,
-        });
+          image_type: imageType,
+          original_image_id: originalImageId,
+        })
+        .select()
+        .single();
 
       if (dbError) throw dbError;
 
-      return { success: true, filePath };
+      return { success: true, filePath, id: data?.id };
     } catch (error) {
       console.error('Error uploading image:', error);
       toast({
@@ -41,5 +45,38 @@ export const useImageUpload = () => {
     }
   };
 
-  return { uploadImage };
+  const uploadProcessedImage = async (blob: Blob, filename: string, originalImageId: string) => {
+    try {
+      // Generate unique filename for processed image
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.png`;
+      const filePath = `${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('uploaded-images')
+        .upload(filePath, blob);
+
+      if (uploadError) throw uploadError;
+
+      // Save metadata to database
+      const { error: dbError } = await supabase
+        .from('image_uploads')
+        .insert({
+          filename: filename,
+          file_path: filePath,
+          file_size: blob.size,
+          image_type: 'processed',
+          original_image_id: originalImageId,
+        });
+
+      if (dbError) throw dbError;
+
+      return { success: true, filePath };
+    } catch (error) {
+      console.error('Error uploading processed image:', error);
+      return { success: false, error };
+    }
+  };
+
+  return { uploadImage, uploadProcessedImage };
 };
