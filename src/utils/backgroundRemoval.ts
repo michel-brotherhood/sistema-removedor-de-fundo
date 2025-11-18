@@ -33,13 +33,18 @@ function resizeImageIfNeeded(canvas: HTMLCanvasElement, ctx: CanvasRenderingCont
 export const removeBackground = async (imageElement: HTMLImageElement, onProgress?: (progress: number) => void): Promise<Blob> => {
   try {
     console.log('Iniciando processo de remoção de fundo...');
-    onProgress?.(20);
+    onProgress?.(10);
     
-    const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512', {
-      device: 'webgpu',
-    });
+    // Usando modelo RMBG especializado em remoção de fundo
+    const segmenter = await pipeline(
+      'image-segmentation', 
+      'briaai/RMBG-1.4',
+      { 
+        device: 'webgpu',
+      }
+    );
     
-    onProgress?.(40);
+    onProgress?.(30);
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -49,18 +54,16 @@ export const removeBackground = async (imageElement: HTMLImageElement, onProgres
     const wasResized = resizeImageIfNeeded(canvas, ctx, imageElement);
     console.log(`Imagem ${wasResized ? 'foi' : 'não foi'} redimensionada. Dimensões finais: ${canvas.width}x${canvas.height}`);
     
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('Imagem convertida para base64');
+    onProgress?.(50);
     
-    onProgress?.(60);
+    console.log('Processando com RMBG 1.4...');
+    const result = await segmenter(canvas);
     
-    console.log('Processando com modelo de segmentação...');
-    const result = await segmenter(imageData);
-    
-    onProgress?.(80);
+    onProgress?.(70);
     
     console.log('Resultado da segmentação:', result);
     
+    // O resultado é um array, pegamos o primeiro elemento
     if (!result || !Array.isArray(result) || result.length === 0 || !result[0].mask) {
       throw new Error('Resultado de segmentação inválido');
     }
@@ -72,21 +75,51 @@ export const removeBackground = async (imageElement: HTMLImageElement, onProgres
     
     if (!outputCtx) throw new Error('Não foi possível obter contexto do canvas de saída');
     
+    // Desenha a imagem original
     outputCtx.drawImage(canvas, 0, 0);
     
-    const outputImageData = outputCtx.getImageData(
-      0, 0,
-      outputCanvas.width,
-      outputCanvas.height
-    );
-    const data = outputImageData.data;
+    onProgress?.(85);
     
-    for (let i = 0; i < result[0].mask.data.length; i++) {
-      const alpha = Math.round((1 - result[0].mask.data[i]) * 255);
-      data[i * 4 + 3] = alpha;
+    // Aplica a máscara ao canal alpha
+    const outputImageData = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
+    const pixels = outputImageData.data;
+    const mask = result[0].mask;
+    
+    // Redimensiona a máscara se necessário
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = outputCanvas.width;
+    maskCanvas.height = outputCanvas.height;
+    const maskCtx = maskCanvas.getContext('2d');
+    
+    if (!maskCtx) throw new Error('Erro ao criar contexto da máscara');
+    
+    // Converte máscara para imagem e redimensiona
+    const maskImageData = maskCtx.createImageData(mask.width, mask.height);
+    for (let i = 0; i < mask.data.length; i++) {
+      const value = mask.data[i] * 255;
+      maskImageData.data[i * 4] = value;
+      maskImageData.data[i * 4 + 1] = value;
+      maskImageData.data[i * 4 + 2] = value;
+      maskImageData.data[i * 4 + 3] = 255;
+    }
+    maskCtx.putImageData(maskImageData, 0, 0);
+    
+    // Redimensiona a máscara para o tamanho da imagem
+    outputCtx.drawImage(maskCanvas, 0, 0, outputCanvas.width, outputCanvas.height);
+    const resizedMask = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
+    
+    // Limpa o canvas e redesenha a imagem
+    outputCtx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.drawImage(canvas, 0, 0);
+    
+    // Aplica a máscara
+    const finalImageData = outputCtx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
+    for (let i = 0; i < pixels.length; i += 4) {
+      const maskValue = resizedMask.data[i]; // Pega o valor da máscara
+      finalImageData.data[i + 3] = maskValue; // Define o canal alpha
     }
     
-    outputCtx.putImageData(outputImageData, 0, 0);
+    outputCtx.putImageData(finalImageData, 0, 0);
     console.log('Máscara aplicada com sucesso');
     
     onProgress?.(100);
