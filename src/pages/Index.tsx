@@ -4,10 +4,12 @@ import { ImageComparison } from '@/components/ImageComparison';
 import { ProcessingState } from '@/components/ProcessingState';
 import { RefinementControls } from '@/components/RefinementControls';
 import { BatchImageProcessor, ProcessedImage } from '@/components/BatchImageProcessor';
+import { ImageHistory } from '@/components/ImageHistory';
 import { removeBackground, loadImage } from '@/utils/backgroundRemoval';
 import { blobToCanvas, exportImage } from '@/utils/imageExport';
 import { ExportFormat } from '@/components/ExportOptions';
 import { useToast } from '@/hooks/use-toast';
+import { useImageHistory } from '@/hooks/useImageHistory';
 import { Sparkles, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,6 +31,7 @@ const Index = () => {
   const [batchImages, setBatchImages] = useState<ProcessedImage[]>([]);
   const [previewImage, setPreviewImage] = useState<ProcessedImage | null>(null);
   const { toast } = useToast();
+  const { history, addToHistory, removeFromHistory, clearHistory, downloadFromHistory } = useImageHistory();
 
   const handleImageSelect = async (files: File[]) => {
     if (mode === 'single') {
@@ -69,6 +72,10 @@ const Index = () => {
         setProcessedBlob(blob);
         const processedUrl = URL.createObjectURL(blob);
         setProcessedImageUrl(processedUrl);
+        
+        // Adiciona ao histórico
+        const filename = currentFile.name.replace(/\.[^/.]+$/, '') || 'imagem';
+        await addToHistory(blob, filename);
         
         setStage('complete');
         
@@ -112,6 +119,10 @@ const Index = () => {
           });
 
           const processedUrl = URL.createObjectURL(blob);
+          
+          // Adiciona ao histórico
+          const filename = image.originalFile.name.replace(/\.[^/.]+$/, '') || 'imagem';
+          await addToHistory(blob, filename);
           
           setBatchImages(prev =>
             prev.map(img =>
@@ -348,8 +359,18 @@ const Index = () => {
           </div>
         </main>
 
-        <footer className="mt-8 sm:mt-16 text-center text-xs sm:text-sm text-muted-foreground px-4">
-          <p>Processamento 100% no navegador • Suas imagens permanecem privadas</p>
+        <footer className="mt-8 sm:mt-16 text-center space-y-4 px-4">
+          <div className="flex justify-center">
+            <ImageHistory
+              history={history}
+              onDownload={downloadFromHistory}
+              onRemove={removeFromHistory}
+              onClear={clearHistory}
+            />
+          </div>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Processamento 100% no navegador • Suas imagens permanecem privadas
+          </p>
         </footer>
       </div>
       
