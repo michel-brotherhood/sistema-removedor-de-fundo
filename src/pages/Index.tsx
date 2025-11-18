@@ -10,6 +10,7 @@ import { blobToCanvas, exportImage } from '@/utils/imageExport';
 import { ExportFormat } from '@/components/ExportOptions';
 import { useToast } from '@/hooks/use-toast';
 import { useImageHistory } from '@/hooks/useImageHistory';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import { Sparkles, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,8 +33,14 @@ const Index = () => {
   const [previewImage, setPreviewImage] = useState<ProcessedImage | null>(null);
   const { toast } = useToast();
   const { history, addToHistory, removeFromHistory, clearHistory, downloadFromHistory } = useImageHistory();
+  const { uploadImage } = useImageUpload();
 
   const handleImageSelect = async (files: File[]) => {
+    // Upload images to storage
+    for (const file of files) {
+      await uploadImage(file);
+    }
+
     if (mode === 'single') {
       setCurrentFile(files[0]);
       const originalUrl = URL.createObjectURL(files[0]);
